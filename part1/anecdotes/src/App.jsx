@@ -1,4 +1,17 @@
+/* eslint-disable react/prop-types */
 import { useState } from "react";
+
+const Anecdote = ({ anecdote }) => {
+  return <p>{anecdote}</p>;
+};
+
+const Votes = ({ point }) => {
+  return <p>has {point} votes</p>;
+};
+
+const Button = ({ handleClick, buttonText }) => {
+  return <button onClick={handleClick}>{buttonText}</button>;
+};
 
 export default function App() {
   const anecdotes = [
@@ -21,30 +34,35 @@ export default function App() {
     setPoints(newPoints);
   };
 
+  const mostVotedAnecdote = anecdotes[points.indexOf(Math.max(...points))];
+  const highestVote = Math.max(...points);
+
   return (
     <div>
       <h1>Anecdote of the day</h1>
-      <p>{anecdotes[selected]}</p>
-      <p>has {points[selected]} votes</p>
+      <Anecdote anecdote={anecdotes[selected]} />
+      <Votes point={points[selected]} />
       <div>
         {selected !== 0 && (
-          <button onClick={() => setSelected((prevSelected) => prevSelected - 1)}>
-            previous anecdote
-          </button>
+          <Button
+            handleClick={() => setSelected((prevSelected) => prevSelected - 1)}
+            buttonText="previous anecdote"
+          />
         )}
-        <button onClick={vote}>vote</button>
+        <Button handleClick={vote} buttonText="vote" />
         {anecdotes[selected + 1] && (
-          <button onClick={() => setSelected((prevSelected) => prevSelected + 1)}>
-            next anecdote
-          </button>
+          <Button
+            handleClick={() => setSelected((prevSelected) => prevSelected + 1)}
+            buttonText="next anecdote"
+          />
         )}
       </div>
       <br />
-      {Math.max(...points) !== 0 && (
+      {highestVote !== 0 && (
         <div>
           <h2>Anecdote with most votes</h2>
-          <p>{anecdotes[points.indexOf(Math.max(...points))]}</p>
-          <p>has {Math.max(...points)} votes</p>
+          <Anecdote anecdote={mostVotedAnecdote} />
+          <Votes point={highestVote} />
         </div>
       )}
     </div>
