@@ -1,5 +1,23 @@
 /* eslint-disable react/prop-types */
-import { useState } from "react";
+import axios from "axios";
+import { useEffect, useState } from "react";
+
+const baseUrl = "http://localhost:3001/persons";
+
+const phonebookService = {
+  getAll: () => {
+    return axios.get(baseUrl).then((res) => res.data);
+  },
+  create: (newPersonData) => {
+    return axios.post(baseUrl, newPersonData).then((res) => res.data);
+  },
+  update: (id, newPersonData) => {
+    return axios.put(`${baseUrl}/${id}`, newPersonData).then((res) => res.data);
+  },
+  delete: (id) => {
+    return axios.delete(`${baseUrl}/${id}`).then((res) => res.data);
+  },
+};
 
 const Filter = ({ value, handleChange }) => {
   return (
@@ -31,13 +49,14 @@ const PersonForm = (props) => {
   );
 };
 
-const PersonList = ({ persons, filterPersons, newFilter }) => {
+const PersonList = ({ persons, filterPersons, newFilter, handleDelete }) => {
   const filteredPersons = filterPersons(persons, newFilter);
   return (
     <ul>
       {filteredPersons.map((person) => (
         <li key={person.id}>
-          {person.name} {person.number}
+          {person.name} {person.number}{" "}
+          <button onClick={() => handleDelete(person.id)}>delete</button>
         </li>
       ))}
     </ul>
@@ -45,12 +64,11 @@ const PersonList = ({ persons, filterPersons, newFilter }) => {
 };
 
 const App = () => {
-  const [persons, setPersons] = useState([
-    { name: "Arto Hellas", number: "040-123-2156", id: 1 },
-    { name: "Ada Lovelace", number: "391-441-5323", id: 2 },
-    { name: "Dan Abramov", number: "123-234-7345", id: 3 },
-    { name: "Mary Poppendieck", number: "392-642-3129", id: 4 },
-  ]);
+  const [persons, setPersons] = useState([]);
+
+  useEffect(() => {
+    phonebookService.getAll().then((initialData) => setPersons(initialData));
+  }, []);
 
   const [newName, setNewName] = useState("");
   const [newNumber, setNewNumber] = useState("");
@@ -60,25 +78,70 @@ const App = () => {
   const handleNumberChange = (event) => setNewNumber(event.target.value);
   const handleFilterChange = (event) => setNewFilter(event.target.value);
 
+  const emptyForm = () => {
+    setNewName("");
+    setNewNumber("");
+  };
+
+  const phonebook = {
+    create: () => {
+      const newPersonData = {
+        name: newName,
+        number: newNumber,
+        id: String(Date.now()),
+      };
+      setNewName("");
+      setNewNumber("");
+
+      phonebookService.create(newPersonData).then((returnedPersonData) => {
+        setPersons(persons.concat(returnedPersonData));
+      });
+    },
+    update: (id, newPersonData) => {
+      phonebookService.update(id, newPersonData).then(() => {
+        setPersons(persons.map((person) => (person.id !== id ? person : newPersonData)));
+      });
+    },
+    delete: (id) => {
+      phonebookService.delete(id).then(() => {
+        setPersons(persons.filter((person) => person.id !== id));
+      });
+    },
+  };
+
   const handleSubmit = (event) => {
     event.preventDefault();
     if (newName === "" || newNumber === "") {
       alert("Please enter a name and number");
-      setNewName("");
-      setNewNumber("");
       return;
     }
-    if (persons.some((person) => person.name === newName)) {
-      alert(`${newName} is already added to phonebook`);
-      return;
+
+    const personWithSameName = persons.find((person) => person.name === newName);
+    const personWithSameNumber = persons.find((person) => person.number === newNumber);
+
+    if (personWithSameName) {
+      if (window.confirm(`Update ${personWithSameName.name}'s number?`)) {
+        phonebook.update(personWithSameName.id, {
+          id: personWithSameName.id,
+          name: personWithSameName.name,
+          number: newNumber,
+        });
+        emptyForm();
+        return;
+      }
+    } else if (personWithSameNumber) {
+      if (window.confirm(`Update ${personWithSameNumber.number}'s name?`)) {
+        phonebook.update(personWithSameNumber.id, {
+          id: personWithSameNumber.id,
+          name: newName,
+          number: personWithSameNumber.number,
+        });
+        emptyForm();
+        return;
+      }
     }
-    if (persons.some((person) => person.number === newNumber)) {
-      alert(`${newNumber} is already added to phonebook`);
-      return;
-    }
-    setPersons([...persons, { id: Date.now(), name: newName, number: newNumber }]);
-    setNewName("");
-    setNewNumber("");
+    phonebook.create();
+    emptyForm();
   };
 
   const filterPersons = (persons, newFilter) => {
@@ -86,7 +149,6 @@ const App = () => {
 
     return persons.filter((person) => person.name.toLowerCase().includes(newFilter));
   };
-
   return (
     <div>
       <h1>Phonebook</h1>
@@ -102,13 +164,12 @@ const App = () => {
       />
 
       <h3>Numbers</h3>
-      {persons.length > 0 && (
-        <PersonList
-          persons={persons}
-          filterPersons={filterPersons}
-          newFilter={newFilter}
-        />
-      )}
+      <PersonList
+        persons={persons}
+        filterPersons={filterPersons}
+        newFilter={newFilter}
+        handleDelete={phonebook.delete}
+      />
     </div>
   );
 };
