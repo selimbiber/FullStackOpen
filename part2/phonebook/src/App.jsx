@@ -19,6 +19,15 @@ const phonebookService = {
   },
 };
 
+const Notification = ({ message, currentStatus }) => {
+  if (message === "") return;
+  return (
+    <p className={`message ${currentStatus === "success" ? "success" : "error"}`}>
+      {message}
+    </p>
+  );
+};
+
 const Filter = ({ value, handleChange }) => {
   return (
     <div>
@@ -55,7 +64,7 @@ const PersonList = ({ persons, filterPersons, newFilter, handleDelete }) => {
     <ul>
       {filteredPersons.map((person) => (
         <li key={person.id}>
-          {person.name} {person.number}{" "}
+          {person.name} {person.number}
           <button onClick={() => handleDelete(person.id)}>delete</button>
         </li>
       ))}
@@ -65,22 +74,31 @@ const PersonList = ({ persons, filterPersons, newFilter, handleDelete }) => {
 
 const App = () => {
   const [persons, setPersons] = useState([]);
-
-  useEffect(() => {
-    phonebookService.getAll().then((initialData) => setPersons(initialData));
-  }, []);
-
   const [newName, setNewName] = useState("");
   const [newNumber, setNewNumber] = useState("");
   const [newFilter, setNewFilter] = useState("");
+  const [notificationMessage, setNotificationMessage] = useState("");
+  const [currentStatus, setCurrentStatus] = useState("success");
 
   const handleNameChange = (event) => setNewName(event.target.value);
   const handleNumberChange = (event) => setNewNumber(event.target.value);
   const handleFilterChange = (event) => setNewFilter(event.target.value);
 
+  useEffect(() => {
+    phonebookService.getAll().then((initialData) => setPersons(initialData));
+  }, []);
+
   const emptyForm = () => {
     setNewName("");
     setNewNumber("");
+  };
+
+  const showNotification = (message, status) => {
+    setCurrentStatus(status);
+    setNotificationMessage(message);
+    setTimeout(() => {
+      setNotificationMessage("");
+    }, 5000);
   };
 
   const phonebook = {
@@ -95,17 +113,38 @@ const App = () => {
 
       phonebookService.create(newPersonData).then((returnedPersonData) => {
         setPersons(persons.concat(returnedPersonData));
+        showNotification(
+          `Information of '${newPersonData.name}' has been successfully added`,
+          "success"
+        );
       });
     },
     update: (id, newPersonData) => {
       phonebookService.update(id, newPersonData).then(() => {
         setPersons(persons.map((person) => (person.id !== id ? person : newPersonData)));
+        showNotification(
+          `Information of '${newPersonData.name}' has been successfully updated`,
+          "success"
+        );
       });
     },
     delete: (id) => {
-      phonebookService.delete(id).then(() => {
-        setPersons(persons.filter((person) => person.id !== id));
-      });
+      const personData = persons.find((person) => person.id === id);
+      phonebookService
+        .delete(id)
+        .then(() => {
+          setPersons(persons.filter((person) => person.id !== id));
+          showNotification(
+            `Information of '${personData.name}' has been successfully deleted`,
+            "success"
+          );
+        })
+        .catch((error) => {
+          showNotification(
+            `Information of '${personData.name}' has already been removed from server`,
+            "error"
+          );
+        });
     },
   };
 
@@ -129,6 +168,7 @@ const App = () => {
         emptyForm();
         return;
       }
+      return;
     } else if (personWithSameNumber) {
       if (window.confirm(`Update ${personWithSameNumber.number}'s name?`)) {
         phonebook.update(personWithSameNumber.id, {
@@ -139,6 +179,7 @@ const App = () => {
         emptyForm();
         return;
       }
+      return;
     }
     phonebook.create();
     emptyForm();
@@ -147,11 +188,15 @@ const App = () => {
   const filterPersons = (persons, newFilter) => {
     if (newFilter === "") return persons;
 
-    return persons.filter((person) => person.name.toLowerCase().includes(newFilter));
+    return persons.filter((person) =>
+      person.name.toLowerCase().includes(newFilter.toLowerCase())
+    );
   };
+
   return (
     <div>
       <h1>Phonebook</h1>
+      <Notification message={notificationMessage} currentStatus={currentStatus} />
       <Filter value={newFilter} handleChange={handleFilterChange} />
 
       <h2>Add a new</h2>
