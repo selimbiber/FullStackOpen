@@ -1,76 +1,10 @@
 /* eslint-disable react/prop-types */
-import axios from "axios";
 import { useEffect, useState } from "react";
-
-const baseUrl = "http://localhost:3001/persons";
-
-const phonebookService = {
-  getAll: () => {
-    return axios.get(baseUrl).then((res) => res.data);
-  },
-  create: (newPersonData) => {
-    return axios.post(baseUrl, newPersonData).then((res) => res.data);
-  },
-  update: (id, newPersonData) => {
-    return axios.put(`${baseUrl}/${id}`, newPersonData).then((res) => res.data);
-  },
-  delete: (id) => {
-    return axios.delete(`${baseUrl}/${id}`).then((res) => res.data);
-  },
-};
-
-const Notification = ({ message, currentStatus }) => {
-  if (message === "") return;
-  return (
-    <p className={`message ${currentStatus === "success" ? "success" : "error"}`}>
-      {message}
-    </p>
-  );
-};
-
-const Filter = ({ value, handleChange }) => {
-  return (
-    <div>
-      filter shown with <input value={value} onChange={handleChange} />
-    </div>
-  );
-};
-
-const PersonForm = (props) => {
-  return (
-    <form onSubmit={props.handleSubmit}>
-      <div>
-        name: <input value={props.newName} onChange={props.handleNameChange} />
-      </div>
-      <div>
-        number:
-        <input
-          type="tel"
-          pattern="[0-9]{3}-[0-9]{3}-[0-9]{4}"
-          value={props.newNumber}
-          onChange={props.handleNumberChange}
-        />
-      </div>
-      <div>
-        <button type="submit">add</button>
-      </div>
-    </form>
-  );
-};
-
-const PersonList = ({ persons, filterPersons, newFilter, handleDelete }) => {
-  const filteredPersons = filterPersons(persons, newFilter);
-  return (
-    <ul>
-      {filteredPersons.map((person) => (
-        <li key={person.id}>
-          {person.name} {person.number}
-          <button onClick={() => handleDelete(person.id)}>delete</button>
-        </li>
-      ))}
-    </ul>
-  );
-};
+import Filter from "./components/Filter";
+import Notification from "./components/Notification";
+import PersonForm from "./components/PersonForm";
+import PersonList from "./components/PersonList";
+import phonebookService from "./services/phonebook";
 
 const App = () => {
   const [persons, setPersons] = useState([]);
@@ -88,6 +22,10 @@ const App = () => {
     phonebookService.getAll().then((initialData) => setPersons(initialData));
   }, []);
 
+  const updatePersons = (newPersons) => {
+    setPersons(newPersons);
+  };
+
   const emptyForm = () => {
     setNewName("");
     setNewNumber("");
@@ -96,56 +34,60 @@ const App = () => {
   const showNotification = (message, status) => {
     setCurrentStatus(status);
     setNotificationMessage(message);
+
     setTimeout(() => {
       setNotificationMessage("");
     }, 5000);
   };
 
-  const phonebook = {
-    create: () => {
-      const newPersonData = {
-        name: newName,
-        number: newNumber,
-        id: String(Date.now()),
-      };
-      setNewName("");
-      setNewNumber("");
+  const createPerson = () => {
+    const newPersonData = {
+      name: newName,
+      number: newNumber,
+      id: String(Date.now()),
+    };
+    setNewName("");
+    setNewNumber("");
 
-      phonebookService.create(newPersonData).then((returnedPersonData) => {
-        setPersons(persons.concat(returnedPersonData));
+    phonebookService.create(newPersonData).then((returnedPersonData) => {
+      const updatedPersons = persons.concat(returnedPersonData);
+      updatePersons(updatedPersons);
+      showNotification(
+        `Information of '${newPersonData.name}' has been successfully added`,
+        "success"
+      );
+    });
+  };
+  const updatePerson = (id, newPersonData) => {
+    phonebookService.update(id, newPersonData).then(() => {
+      const updatedPersons = persons.map((person) =>
+        person.id !== id ? person : newPersonData
+      );
+      updatePersons(updatedPersons);
+      showNotification(
+        `Information of '${newPersonData.name}' has been successfully updated`,
+        "success"
+      );
+    });
+  };
+  const removePerson = (id) => {
+    const personData = persons.find((person) => person.id === id);
+    phonebookService
+      .remove(id)
+      .then(() => {
+        const updatedPersons = persons.filter((person) => person.id !== id);
+        updatePersons(updatedPersons);
         showNotification(
-          `Information of '${newPersonData.name}' has been successfully added`,
+          `Information of '${personData.name}' has been successfully deleted`,
           "success"
         );
-      });
-    },
-    update: (id, newPersonData) => {
-      phonebookService.update(id, newPersonData).then(() => {
-        setPersons(persons.map((person) => (person.id !== id ? person : newPersonData)));
+      })
+      .catch((error) => {
         showNotification(
-          `Information of '${newPersonData.name}' has been successfully updated`,
-          "success"
+          `Information of '${personData.name}' has already been removed from server`,
+          "error"
         );
       });
-    },
-    delete: (id) => {
-      const personData = persons.find((person) => person.id === id);
-      phonebookService
-        .delete(id)
-        .then(() => {
-          setPersons(persons.filter((person) => person.id !== id));
-          showNotification(
-            `Information of '${personData.name}' has been successfully deleted`,
-            "success"
-          );
-        })
-        .catch((error) => {
-          showNotification(
-            `Information of '${personData.name}' has already been removed from server`,
-            "error"
-          );
-        });
-    },
   };
 
   const handleSubmit = (event) => {
@@ -160,7 +102,7 @@ const App = () => {
 
     if (personWithSameName) {
       if (window.confirm(`Update ${personWithSameName.name}'s number?`)) {
-        phonebook.update(personWithSameName.id, {
+        updatePerson(personWithSameName.id, {
           id: personWithSameName.id,
           name: personWithSameName.name,
           number: newNumber,
@@ -171,7 +113,7 @@ const App = () => {
       return;
     } else if (personWithSameNumber) {
       if (window.confirm(`Update ${personWithSameNumber.number}'s name?`)) {
-        phonebook.update(personWithSameNumber.id, {
+        updatePerson(personWithSameNumber.id, {
           id: personWithSameNumber.id,
           name: newName,
           number: personWithSameNumber.number,
@@ -181,7 +123,7 @@ const App = () => {
       }
       return;
     }
-    phonebook.create();
+    createPerson();
     emptyForm();
   };
 
@@ -196,7 +138,7 @@ const App = () => {
   return (
     <div>
       <h1>Phonebook</h1>
-      <Notification message={notificationMessage} currentStatus={currentStatus} />
+      <Notification message={notificationMessage} status={currentStatus} />
       <Filter value={newFilter} handleChange={handleFilterChange} />
 
       <h2>Add a new</h2>
@@ -213,7 +155,7 @@ const App = () => {
         persons={persons}
         filterPersons={filterPersons}
         newFilter={newFilter}
-        handleDelete={phonebook.delete}
+        handleDelete={removePerson}
       />
     </div>
   );
