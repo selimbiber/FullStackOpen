@@ -1,4 +1,5 @@
 const express = require("express");
+const morgan = require("morgan");
 const app = express();
 
 const persons = [
@@ -25,8 +26,27 @@ const persons = [
 ];
 
 app.use(express.json());
-
 app.use(express.urlencoded({ extended: true }));
+
+app.use(
+  morgan((tokens, req, res) => {
+    return [
+      tokens.method(req, res),
+      tokens.url(req, res),
+      tokens.status(req, res),
+      tokens.res(req, res, "content-length"),
+      "-",
+      tokens["response-time"](req, res),
+      "ms",
+      JSON.stringify(req.body),
+    ].join(" ");
+  })
+);
+// POST /api/persons 201 59 - 4.008 ms {"name":"Selim Pepper" "number":"123-456-7890"}
+
+app.get("/", (req, res) => {
+  res.send("Hello World!");
+});
 
 app.get("/api/persons", (req, res) => {
   res.json(persons);
@@ -85,5 +105,5 @@ app.post("/api/persons", (req, res) => {
 const port = 3001;
 
 app.listen(port, () => {
-  console.log(`Example app listening at http://localhost:${port}`);
+  console.log(`Server running on http://localhost:${port}`);
 });
