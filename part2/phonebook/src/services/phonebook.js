@@ -1,7 +1,7 @@
 /* eslint-disable no-unused-vars */
 import axios from "axios";
 
-const baseUrl = "http://localhost:3001/persons";
+const baseUrl = "api/persons";
 
 const getAll = () => {
   return axios.get(baseUrl).then((res) => res.data);
