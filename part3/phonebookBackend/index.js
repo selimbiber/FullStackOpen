@@ -14,21 +14,6 @@ app.use(express.static("dist"));
 
 app.use(morgan(":method :url :status :res[content-length] - :response-time ms"));
 
-const errorHandler = (error, req, res, _) => {
-  console.error("Error:", error.message);
-  console.error(error.stack);
-
-  if (error.name === "CastError") {
-    return res.status(400).json({ error: "Malformatted Id" });
-  } else if (error.name === "ValidationError") {
-    return res.status(400).json({ error: error.message });
-  }
-
-  return res.status(500).json({ error: "Internal server error!" });
-};
-
-app.use(errorHandler);
-
 app.get("/", (req, res) => {
   res.send("Hello MongoDB!");
 });
@@ -118,6 +103,21 @@ const unknownEndpoint = (request, res) => {
   res.status(404).send({ error: "Unknown endpoint!" });
 };
 app.use(unknownEndpoint);
+
+const errorHandler = (error, req, res, _) => {
+  console.error("Error:", error.message);
+  console.error(error.stack);
+
+  if (error.name === "CastError") {
+    return res.status(400).json({ error: "Malformatted Id" });
+  } else if (error.name === "ValidationError") {
+    return res.status(400).json({ error: error.message });
+  }
+
+  return res.status(500).json({ error: "Internal server error!" });
+};
+
+app.use(errorHandler);
 
 const PORT = process.env.PORT || 3001;
 
