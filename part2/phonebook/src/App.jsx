@@ -49,14 +49,17 @@ const App = () => {
     setNewName("");
     setNewNumber("");
 
-    phonebookService.create(newPersonData).then((returnedPersonData) => {
-      const updatedPersons = persons.concat(returnedPersonData);
-      updatePersons(updatedPersons);
-      showNotification(
-        `Information of '${newPersonData.name}' has been successfully added`,
-        "success"
-      );
-    });
+    phonebookService
+      .create(newPersonData)
+      .then((returnedPersonData) => {
+        const updatedPersons = persons.concat(returnedPersonData);
+        updatePersons(updatedPersons);
+        showNotification(
+          `Information of '${newPersonData.name}' has been successfully added`,
+          "success"
+        );
+      })
+      .catch((error) => console.log(error.response.data.error));
   };
   const updatePerson = (id, newPersonData) => {
     phonebookService.update(id, newPersonData).then(() => {

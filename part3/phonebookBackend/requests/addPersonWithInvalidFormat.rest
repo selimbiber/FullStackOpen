@@ -1,0 +1,7 @@
+POST http://localhost:3001/api/persons
+content-Type: application/json
+
+{
+    "name": "Invalid",
+    "number": "12-34567890"
+}
